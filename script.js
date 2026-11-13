@@ -1,13 +1,16 @@
-// ---------- Map setup (Leaflet) ----------
 const map = L.map("map").setView([12.88, 121.77], 6); // centered on the Philippines
 
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: "&copy; OpenStreetMap contributors",
 }).addTo(map);
 
 // A layer group holds all markers so we can clear them in one call
 const markers = L.layerGroup().addTo(map);
+
+// Remembers the view that shows all results, so we can zoom back out to it
+let resultsBounds = null;
+let popupIsOpen = false;
 
 // ---------- DOM references ----------
 const form = document.getElementById("search-form");
@@ -21,14 +24,27 @@ function showMessage(text, isError = false) {
   message.className = isError ? "error" : "";
 }
 
+// Tell the user if map tiles can't load (blocked network, offline, etc.)
+let tileErrorShown = false;
+tiles.on("tileerror", () => {
+  if (tileErrorShown) return;
+  tileErrorShown = true;
+  showMessage(
+    "Map tiles failed to load. Check your internet connection or firewall.",
+    true,
+  );
+});
+
 // Popup with place name and country (textContent avoids HTML injection)
 function buildPopup(place) {
   const div = document.createElement("div");
 
-  const name = document.createElement("strong");
+  const name = document.createElement("div");
+  name.className = "popup-name";
   name.textContent = place.name || place.display_name.split(",")[0];
 
   const country = document.createElement("div");
+  country.className = "popup-country";
   country.textContent =
     (place.address && place.address.country) || "Philippines";
 
@@ -38,6 +54,7 @@ function buildPopup(place) {
 
 async function searchCity(term) {
   // Clear old markers before every new search
+  resultsBounds = null; // so closing the old popup doesn't trigger a zoom out
   markers.clearLayers();
 
   const url =
@@ -54,12 +71,33 @@ async function searchCity(term) {
   return response.json();
 }
 
+// ---------- Zoom in on pin click, zoom out on popup close ----------
+map.on("popupopen", () => {
+  popupIsOpen = true;
+});
+
+map.on("popupclose", () => {
+  popupIsOpen = false;
+  // Wait a tick: if another pin was clicked, a new popup opens right away
+  // and we should stay zoomed in instead of zooming out.
+  setTimeout(() => {
+    if (!popupIsOpen && resultsBounds) {
+      map.flyToBounds(resultsBounds, {
+        padding: [40, 40],
+        maxZoom: 12,
+        duration: 0.8,
+      });
+    }
+  }, 0);
+});
+
 // ---------- Main handler ----------
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const term = input.value.trim();
 
   if (!term) {
+    resultsBounds = null;
     markers.clearLayers();
     showMessage("Please enter a city name first.", true);
     return;
@@ -84,11 +122,26 @@ form.addEventListener("submit", async (event) => {
     // Up to five markers, each with a popup
     const points = results.slice(0, 5).map((place) => {
       const latlng = [parseFloat(place.lat), parseFloat(place.lon)];
-      L.marker(latlng).addTo(markers).bindPopup(buildPopup(place));
+      const marker = L.circleMarker(latlng, {
+        radius: 7,
+        color: "#fff",
+        weight: 2,
+        fillColor: "#111",
+        fillOpacity: 1,
+      })
+        .addTo(markers)
+        .bindPopup(buildPopup(place));
+
+      // Zoom in when a pin is clicked
+      marker.on("click", () => {
+        map.flyTo(latlng, 14, { duration: 0.8 });
+      });
+
       return latlng;
     });
 
-    map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 12 });
+    resultsBounds = L.latLngBounds(points);
+    map.fitBounds(resultsBounds, { padding: [40, 40], maxZoom: 12 });
     showMessage(
       "Showing " +
         points.length +
@@ -96,7 +149,7 @@ form.addEventListener("submit", async (event) => {
         (points.length > 1 ? "es" : "") +
         ' for "' +
         term +
-        '". Click a pin for details.',
+        '". Click a pin to zoom in.',
     );
   } catch (err) {
     showMessage(
