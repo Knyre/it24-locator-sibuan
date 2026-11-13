@@ -1,4 +1,8 @@
-const map = L.map("map").setView([12.88, 121.77], 6); // centered on the Philippines
+// ---------- Map setup (Leaflet) ----------
+const DEFAULT_CENTER = [12.88, 121.77]; // the Philippines
+const DEFAULT_ZOOM = 6;
+
+const map = L.map("map").setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
 const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
@@ -16,6 +20,7 @@ let popupIsOpen = false;
 const form = document.getElementById("search-form");
 const input = document.getElementById("query");
 const button = document.getElementById("search-btn");
+const clearBtn = document.getElementById("clear-btn");
 const message = document.getElementById("message");
 
 // ---------- Helpers ----------
@@ -70,6 +75,27 @@ async function searchCity(term) {
   }
   return response.json();
 }
+
+// ---------- Clear button (✕) ----------
+function toggleClearButton() {
+  clearBtn.hidden = input.value.length === 0;
+}
+
+input.addEventListener("input", toggleClearButton);
+
+clearBtn.addEventListener("click", () => {
+  resultsBounds = null; // stops the popup-close handler from zooming to old results
+  markers.clearLayers(); // remove all pins (also closes any open popup)
+  map.closePopup();
+
+  input.value = "";
+  toggleClearButton();
+  showMessage("Try “Cagayan de Oro” or “Cebu”.");
+
+  // Zoom back out to the whole country
+  map.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { duration: 0.8 });
+  input.focus();
+});
 
 // ---------- Zoom in on pin click, zoom out on popup close ----------
 map.on("popupopen", () => {

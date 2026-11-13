@@ -58,6 +58,7 @@ h1 {
 
 form {
     display: flex;
+    align-items: center;
     border-bottom: 1px solid var(--line);
     transition: border-color 0.2s;
 }
@@ -68,6 +69,7 @@ form:focus-within {
 
 input {
     flex: 1;
+    min-width: 0;
     padding: 8px 0;
     font: inherit;
     font-size: 1.05rem;
@@ -90,7 +92,11 @@ button {
     background: none;
     border: 0;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: transform 0.2s, color 0.2s;
+}
+
+button[hidden] {
+    display: none;
 }
 
 button:hover {
@@ -100,6 +106,18 @@ button:hover {
 button:disabled {
     color: var(--muted);
     cursor: wait;
+    transform: none;
+}
+
+/* Clear (✕) button */
+#clear-btn {
+    padding: 0 8px;
+    font-size: 0.95rem;
+    color: var(--muted);
+}
+
+#clear-btn:hover {
+    color: var(--text);
     transform: none;
 }
 
