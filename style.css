@@ -56,9 +56,9 @@ h1 {
     color: var(--muted);
 }
 
+/* Search bar: buttons float on the right so the text stays truly centered */
 form {
-    display: flex;
-    align-items: center;
+    position: relative;
     border-bottom: 1px solid var(--line);
     transition: border-color 0.2s;
 }
@@ -68,9 +68,10 @@ form:focus-within {
 }
 
 input {
-    flex: 1;
-    min-width: 0;
-    padding: 8px 0;
+    display: block;
+    width: 100%;
+    padding: 8px 64px;
+    /* equal space left and right keeps the text centered */
     font: inherit;
     font-size: 1.05rem;
     color: inherit;
@@ -85,40 +86,48 @@ input::placeholder {
 }
 
 button {
-    padding: 0 4px 0 12px;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 4px 8px;
     font: inherit;
     font-size: 1.2rem;
+    line-height: 1;
     color: var(--text);
     background: none;
     border: 0;
     cursor: pointer;
-    transition: transform 0.2s, color 0.2s;
+    transition: color 0.2s, right 0.2s;
 }
 
 button[hidden] {
     display: none;
 }
 
-button:hover {
-    transform: translateX(3px);
+/* Search arrow, far right */
+#search-btn {
+    right: 0;
 }
 
-button:disabled {
+#search-btn:hover {
+    right: -3px;
+}
+
+#search-btn:disabled {
     color: var(--muted);
     cursor: wait;
-    transform: none;
+    right: 0;
 }
 
-/* Clear (✕) button */
+/* Clear (✕) button, just left of the arrow */
 #clear-btn {
-    padding: 0 8px;
+    right: 34px;
     font-size: 0.95rem;
     color: var(--muted);
 }
 
 #clear-btn:hover {
     color: var(--text);
-    transform: none;
 }
 
 #message {
