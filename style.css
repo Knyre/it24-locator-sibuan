@@ -56,7 +56,6 @@ h1 {
     color: var(--muted);
 }
 
-/* Search bar: buttons float on the right so the text stays truly centered */
 form {
     position: relative;
     border-bottom: 1px solid var(--line);

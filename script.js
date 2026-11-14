@@ -1,6 +1,7 @@
 // ---------- Map setup (Leaflet) ----------
 const DEFAULT_CENTER = [12.88, 121.77]; // the Philippines
 const DEFAULT_ZOOM = 6;
+const HINT = "Try “Cagayan de Oro” or “Cebu”.";
 
 const map = L.map("map").setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
@@ -22,6 +23,9 @@ const input = document.getElementById("query");
 const button = document.getElementById("search-btn");
 const clearBtn = document.getElementById("clear-btn");
 const message = document.getElementById("message");
+const recentSection = document.getElementById("recent");
+const recentList = document.getElementById("recent-list");
+const clearRecentBtn = document.getElementById("clear-recent-btn");
 
 // ---------- Helpers ----------
 function showMessage(text, isError = false) {
@@ -76,6 +80,63 @@ async function searchCity(term) {
   return response.json();
 }
 
+// ---------- Recent searches (saved in localStorage) ----------
+const STORAGE_KEY = "ph-city-explorer-recent";
+const MAX_RECENT = 6;
+
+function loadRecent() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return Array.isArray(saved) ? saved : [];
+  } catch (err) {
+    return []; // storage unavailable or corrupted
+  }
+}
+
+function saveRecent(list) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch (err) {
+    // ignore: the list just won't persist
+  }
+}
+
+function renderRecent() {
+  const list = loadRecent();
+  recentList.innerHTML = "";
+  recentSection.hidden = list.length === 0;
+
+  list.forEach((term) => {
+    const li = document.createElement("li");
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = term;
+    chip.addEventListener("click", () => {
+      input.value = term;
+      toggleClearButton();
+      runSearch(term);
+    });
+    li.appendChild(chip);
+    recentList.appendChild(li);
+  });
+}
+
+function addRecent(term) {
+  // Newest first, no duplicates (case-insensitive), capped at MAX_RECENT
+  const list = loadRecent().filter(
+    (t) => t.toLowerCase() !== term.toLowerCase(),
+  );
+  list.unshift(term);
+  saveRecent(list.slice(0, MAX_RECENT));
+  renderRecent();
+}
+
+clearRecentBtn.addEventListener("click", () => {
+  saveRecent([]);
+  renderRecent();
+});
+
 // ---------- Clear button (✕) ----------
 function toggleClearButton() {
   clearBtn.hidden = input.value.length === 0;
@@ -90,7 +151,7 @@ clearBtn.addEventListener("click", () => {
 
   input.value = "";
   toggleClearButton();
-  showMessage("Try “Cagayan de Oro” or “Cebu”.");
+  showMessage(HINT);
 
   // Zoom back out to the whole country
   map.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { duration: 0.8 });
@@ -117,10 +178,9 @@ map.on("popupclose", () => {
   }, 0);
 });
 
-// ---------- Main handler ----------
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const term = input.value.trim();
+// ---------- Main search ----------
+async function runSearch(rawTerm) {
+  const term = rawTerm.trim();
 
   if (!term) {
     resultsBounds = null;
@@ -177,6 +237,8 @@ form.addEventListener("submit", async (event) => {
         term +
         '". Click a pin to zoom in.',
     );
+
+    addRecent(term); // only successful searches are saved
   } catch (err) {
     showMessage(
       "Something went wrong: " +
@@ -187,4 +249,12 @@ form.addEventListener("submit", async (event) => {
   } finally {
     button.disabled = false;
   }
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  runSearch(input.value);
 });
+
+// Show saved searches when the page loads
+renderRecent();
