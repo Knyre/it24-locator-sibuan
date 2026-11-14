@@ -26,24 +26,47 @@ const message = document.getElementById("message");
 const recentSection = document.getElementById("recent");
 const recentList = document.getElementById("recent-list");
 const clearRecentBtn = document.getElementById("clear-recent-btn");
+const toast = document.getElementById("toast");
+const toastText = document.getElementById("toast-text");
+const toastClose = document.getElementById("toast-close");
 
-// ---------- Helpers ----------
-function showMessage(text, isError = false) {
+// ---------- Messages ----------
+// Normal status text inside the search panel
+function showMessage(text) {
   message.textContent = text;
-  message.className = isError ? "error" : "";
 }
+
+// Error popup that slides down from the top
+let toastTimer = null;
+
+function showError(text) {
+  toastText.textContent = text;
+  toast.classList.add("show");
+  document.body.classList.add("has-toast");
+
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideError, 5000); // auto-dismiss after 5 seconds
+}
+
+function hideError() {
+  clearTimeout(toastTimer);
+  toast.classList.remove("show");
+  document.body.classList.remove("has-toast");
+}
+
+toastClose.addEventListener("click", hideError);
 
 // Tell the user if map tiles can't load (blocked network, offline, etc.)
 let tileErrorShown = false;
 tiles.on("tileerror", () => {
   if (tileErrorShown) return;
   tileErrorShown = true;
-  showMessage(
+  showError(
     "Map tiles failed to load. Check your internet connection or firewall.",
-    true,
   );
 });
 
+// ---------- Helpers ----------
 // Popup with place name and country (textContent avoids HTML injection)
 function buildPopup(place) {
   const div = document.createElement("div");
@@ -148,6 +171,7 @@ clearBtn.addEventListener("click", () => {
   resultsBounds = null; // stops the popup-close handler from zooming to old results
   markers.clearLayers(); // remove all pins (also closes any open popup)
   map.closePopup();
+  hideError();
 
   input.value = "";
   toggleClearButton();
@@ -181,11 +205,12 @@ map.on("popupclose", () => {
 // ---------- Main search ----------
 async function runSearch(rawTerm) {
   const term = rawTerm.trim();
+  hideError(); // remove any old error before a new search
 
   if (!term) {
     resultsBounds = null;
     markers.clearLayers();
-    showMessage("Please enter a city name first.", true);
+    showError("Please enter a city name first.");
     return;
   }
 
@@ -196,11 +221,11 @@ async function runSearch(rawTerm) {
     const results = await searchCity(term);
 
     if (results.length === 0) {
-      showMessage(
+      showMessage(HINT);
+      showError(
         'No Philippine locations found for "' +
           term +
           '". Check the spelling or try a nearby city.',
-        true,
       );
       return;
     }
@@ -240,11 +265,11 @@ async function runSearch(rawTerm) {
 
     addRecent(term); // only successful searches are saved
   } catch (err) {
-    showMessage(
+    showMessage(HINT);
+    showError(
       "Something went wrong: " +
         err.message +
         ". Check your internet connection and try again.",
-      true,
     );
   } finally {
     button.disabled = false;
