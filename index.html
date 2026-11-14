@@ -13,6 +13,14 @@
   <body>
     <div id="map"></div>
 
+    <!-- Error popup that slides down from the top -->
+    <div id="toast" class="toast" role="alert" aria-live="assertive">
+      <span id="toast-text"></span>
+      <button id="toast-close" type="button" aria-label="Dismiss error">
+        ✕
+      </button>
+    </div>
+
     <main class="panel">
       <h1>PH City Explorer</h1>
       <form id="search-form">
